@@ -41,10 +41,10 @@ export class Oracle {
         //create endpoint
         console.log('create endpoint')
         const createEndpoint = await provider.initiateProviderCurve({
-          endpoint: endpoint.name,
-          term: endpoint.curve
-        });
-        console.log('Successfully created endpoint', createEndpoint)
+          endpoint: endpohttp://git.smartum.pro/Zap/oracle-coinmarketcap.gitint.name,
+          term: endpoint.http://git.smartum.pro/Zap/oracle-coinmarketcap.gitcurve
+        });http://git.smartum.pro/Zap/oracle-coinmarketcap.git
+        console.log('Succhttp://git.smartum.pro/Zap/oracle-coinmarketcap.gitessfully created endpoint', createEndpoint)
       } else {
         console.log(`curve ${endpoint.name} is set:`, await provider.getCurve(endpoint.name));
       }

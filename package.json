@@ -1,5 +1,5 @@
 {
-  "name": "zap-oracle-coinmarketcap",
+  "name": "multioracle",
   "version": "0.0.1",
   "description": "Conimarketcap Zap oracle.",
   "main": "Oracle/index.js",

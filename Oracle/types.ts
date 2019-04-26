@@ -7,6 +7,12 @@ export interface QueryEvent {
   onchainSub: boolean
 }
 
+export interface ResponseEvent {
+  queryId: string,
+  response: string,
+  signature: string
+}
+
 export interface EndpointSchema {
   name: string,
   curve: number[],
