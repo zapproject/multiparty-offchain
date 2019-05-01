@@ -10,7 +10,7 @@ export interface QueryEvent {
 export interface ResponseEvent {
   queryId: string,
   response: string,
-  signature: string
+  publicKey: string
 }
 
 export interface EndpointSchema {

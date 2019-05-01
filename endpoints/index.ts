@@ -1,6 +1,6 @@
 const http = require('http');
 const { parse } = require('querystring');
-export function handleResponses(err, cb) {
+export function handleRemoteResponses(err, cb) {
 const server = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === "/response") {
     let body = '';

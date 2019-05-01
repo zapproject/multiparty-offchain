@@ -1,6 +1,7 @@
 import knex from './knex';
-import { QueryEvent } from '../Oracle/types';
+import { QueryEvent, ResponseEvent } from '../Oracle/types';
 import mysql from 'mysql';
+import cron from 'node-cron';
 
 export enum QueryStatus {
   Scheduled,
@@ -17,12 +18,13 @@ export function addQuery(event: QueryEvent): any {
 }
 
 export function addResponse(event: ResponseEvent): any {
+  const {response, publicKey} = event;
 
   //if(id && signature) updtate
   return knex('response').insert({
     queryId: String(event.queryId),
-    response: response,
-    signature: signature
+    response,
+    publicKey
   }).returning('id');
 }
 
@@ -30,85 +32,59 @@ export function flushResponded(keys) {
   return Promise.all([
     knex('queries')
     .whereIn('queryId', keys)
+    .andWhere('received', '<', Date.now() - 30000)
     .del(),
     knex('responses')
     .whereIn('queryId', keys)
+    .andWhere('received', '<', Date.now() - 30000)
     .del()
+  ]);
+}
+
+export function restoreNotResponded(keys) {
+  return Promise.all([
+    knex('responses')
+    .whereIn('queryId', keys)
+    .update('status', '')
   ]);
 }
 
 export function getResponses(count) {
   const subquery = knex.select('queryId')
     .from('responses')
+    .whereNot('status', 'toDelete')
     .groupBy('queryId')
-    .having(knex.raw(`count(*) >= ${count}`))
-    .union(function() {
-      this.select('*').from('queries').where('received', '<', Date.now() - 30000)
-    })
-    return knex.select('*').from('responses')
-      .whereIn('queryId', subquery)
-}
-
- async function crontab() {
-   //get whitelist. quantity = 12
-   const respones = await getResponses(12);
-   const queriesList = [];
-   respones.forEach(item => {
-     if (!queriesList[item.queryId]) queriesList[item.queryId] = [];
-     queriesList[item.queryId].push({sign: item.signature, response: item.response})
-   });
-   for (let key in queriesList){
-     //gather format for contract
-     //push in promise
-   }
-   //promiseAll the
-   flushResponded(Object.keys(respones)).then(()=> console.log('flushed').catch(err => console.log(err))
- }
- setInterval(crontab, 15000);
-
-export function getQueriesToRun(timestamp) {
-  return knex('queries').where('query_time', '<', new Date(timestamp)).andWhere('status', QueryStatus.Scheduled).select('queryId', 'sql');
-}
-
-export async function getQueryData(queryId, sql) {
-  return knex('queries').where('queryId', queryId).update('status', QueryStatus.Running)
-    .then(() => knex.raw(sql.replace('primary', '`primary`')));
-}
-
-export function completeQuery(queryId, message = null) {
-  return knex('queries').where('queryId', queryId).update({
-    status: QueryStatus.Completed,
-    query_executed: new Date(),
-    message,
-  });
-}
-
-export function queryError(queryId, message = null) {
-  return knex('queries').where('queryId', queryId).update({
-    query_executed: new Date(),
-    message,
-  });
-}
-
-/*
-const http = require('http');
-const { parse } = require('querystring');
-export function handleResponses(err, cb) {
-const server = http.createServer((req, res) => {
-    if (req.method === 'POST' && req.url === "/response") {
-    let body = '';
-    req.on('data', chunk => {
-        body += chunk.toString(); // convert Buffer to string
+    .having(knex.raw(`count(*) >= ${count}`));
+    knex.transaction(function(trx) {
+      return trx.select('queryId')
+      .from('responses')
+      .whereNot('status', 'toDelete')
+      .groupBy('queryId')
+      .having(knex.raw(`count(*) >= ${count}`))
+      .then(function(ids) {
+        trx.select('*').from('responses')
+        .whereIn('queryId', ids);
+        return ids;
+      })
+      .then(function(ids) {
+        return trx.whereIn('queryId', ids)
+        .update('status', 'toDelete')
+      })
     });
-    req.on('end', () => {
-        cb(parse(body));
-        res.end('ok');
-    });
+    
 }
-   
-});
-server.listen(3000);
-}
-*/
 
-handleResponses(addResponse)
+ export async function handleResponsesInDb(quantity, callContractRespond) {
+  const responses = await getResponses(quantity);
+  const queriesList = responses.reduce((obj, {publicKey, response, queryId}) => {
+    return {...obj,  [queryId] : [...[queryId], {publicKey, response}]}
+  }, {});
+
+  try {
+    await callContractRespond(responses);
+    flushResponded(Object.keys(queriesList)).then(()=> console.log('flushed')).catch(err => console.log(err))
+  } catch(err) {
+    console.log(err);
+    restoreNotResponded(Object.keys(queriesList)).then(()=> console.log('flushed')).catch(err => console.log(err))
+  }
+}
