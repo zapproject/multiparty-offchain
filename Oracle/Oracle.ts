@@ -1,5 +1,5 @@
-import {getResponse} from "./Responder"
-import * as Config from "./Config.json"
+import {getResponse} from "./Responder";
+import Config from "./Config.js";
 const Web3 = require('web3');
 import { ZapProvider } from "@zapjs/provider";
 import {ZapToken} from "@zapjs/zaptoken"
@@ -14,13 +14,14 @@ import { addQuery, addResponse, handleResponsesInDb } from "../db/queries";
 import { handleRemoteResponses } from '../endpoints';
 import cron from 'node-cron';
 import { ResponseEvent } from "./types";
-
+const DEFAULT_GAS = 60000;
 
 export  class ZapOracle {
     web3:any
     oracle:any
     zapToken:any
     respondersQuantity: any;
+    contract: any;
 
     constructor(){
         this.web3 = new Web3(new HDWalletProviderMem(Config.mnemonic, Config.NODE_URL))
@@ -45,9 +46,10 @@ export  class ZapOracle {
      * Starts listening for queries and calling handleQuery function
      */
     async initialize() {
-        await this.validateConfig()
+        await this.validateConfig();
         // Get the provider and contracts
         await this.getProvider();
+        this.contract = new this.web3.eth.Contract(Config.contractABI, Config.contractAddress);
         await this.delay(5000)
         const title = await this.oracle.getTitle();
         console.log(title)
@@ -118,23 +120,16 @@ export  class ZapOracle {
             else{
               console.log("No md value file, skipping")
             }
-            /*
-            contract.methods.setParams(
+            this.contract.methods.setParams(
                     endpoint.responders,
                     endpoint.responders
-                    .send({from: publicKey, gas: DEFAULT_GAS});
+                    .send({from: Config.publicKey, gas: DEFAULT_GAS});
             this.respondersQuantity =  endpoint.responders.length;
-            }
-            */
-        }
-        else {
-            /*
-            his.respondersQuantity = contract.methods.getNumResponders(
+        } else {
+            this.respondersQuantity = this.contract.methods.getNumResponders(
                     endpoint.responders,
                     endpoint.responders
-                    .call({from: publicKey, gas: DEFAULT_GAS});
-            }
-            */
+                    .call({from: Config.publicKey, gas: DEFAULT_GAS});
           //Endpoint is initialized, so ignore all the setup part and listen to Query
             console.log("curve is already  set : ", await this.oracle.getCurve(endpoint.name))
         }
@@ -218,16 +213,16 @@ export  class ZapOracle {
     }
 
     async sendToBlockchain(responses: Array<ResponseEvent>) {
-        /*const contract = web3.eth.contract(contractABI);
-        const contractInstance = contract.at(this.contractAddress);*/
         const DEFAULT_GAS = 300000
         const responsesList = responses.map(
-            ({publicKey, response, queryId}) => {
-                const contract = {}'//get contract
-                contract.methods.callback(
-                    toHex(queryId),
-                    utf8ToHex(response))
-                    .send({from: publicKey, gas: DEFAULT_GAS});
+            ({hash, sigv, sigrs, response, queryId}) => {
+                this.contract.methods.callback(
+                    queryId,
+                    response,
+                    hash,
+                    sigv,
+                    sigrs,
+                    ).send({from: Config.public_key, gas: DEFAULT_GAS});
             }
         )
         return Promise.all(responsesList);

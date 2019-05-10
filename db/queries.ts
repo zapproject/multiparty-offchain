@@ -2,6 +2,8 @@ import knex from './knex';
 import { QueryEvent, ResponseEvent } from '../Oracle/types';
 import mysql from 'mysql';
 import cron from 'node-cron';
+import Config from "../Oracle/Config.js";
+
 
 export enum QueryStatus {
   Scheduled,
@@ -18,13 +20,14 @@ export function addQuery(event: QueryEvent): any {
 }
 
 export function addResponse(event: ResponseEvent): any {
-  const {response, publicKey} = event;
+  const {response, hash, sigv, sigrs} = event;
 
-  //if(id && signature) updtate
   return knex('response').insert({
     queryId: String(event.queryId),
     response,
-    publicKey
+    hash,
+    sigv,
+    sigrs
   }).returning('id');
 }
 
@@ -32,11 +35,11 @@ export function flushResponded(keys) {
   return Promise.all([
     knex('queries')
     .whereIn('queryId', keys)
-    .andWhere('received', '<', Date.now() - 30000)
+    .andWhere('received', '<', Date.now() - Config.timeout)
     .del(),
     knex('responses')
     .whereIn('queryId', keys)
-    .andWhere('received', '<', Date.now() - 30000)
+    .andWhere('received', '<', Date.now() - Config.timeout)
     .del()
   ]);
 }
@@ -50,12 +53,7 @@ export function restoreNotResponded(keys) {
 }
 
 export function getResponses(count) {
-  const subquery = knex.select('queryId')
-    .from('responses')
-    .whereNot('status', 'toDelete')
-    .groupBy('queryId')
-    .having(knex.raw(`count(*) >= ${count}`));
-    knex.transaction(function(trx) {
+    return knex.transaction(function(trx) {
       return trx.select('queryId')
       .from('responses')
       .whereNot('status', 'toDelete')
@@ -76,8 +74,8 @@ export function getResponses(count) {
 
  export async function handleResponsesInDb(quantity, callContractRespond) {
   const responses = await getResponses(quantity);
-  const queriesList = responses.reduce((obj, {publicKey, response, queryId}) => {
-    return {...obj,  [queryId] : [...[queryId], {publicKey, response}]}
+  const queriesList = responses.reduce((obj, {hash, sigv, sigrs, response, queryId}) => {
+    return {...obj,  [queryId] : [...[queryId], {hash, sigv, sigrs, response}]}
   }, {});
 
   try {

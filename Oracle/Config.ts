@@ -1,9 +1,12 @@
-{
+const config = {
 	"title": "Title",
 	"public_key": "Public key",
 	"NODE_URL": "wss://mainnet.infura.io/ws/v3/63dbbe242127449b9aeb061c6640ab95",
 	"mnemonic": "",
+	"contractAddress": "",
+	"contractAbi": "",
 	"STATUS_URL":"",
+	"timeout": 180000,
 	"EndpointSchema": {
 		"name": "",
 		"curve": [2,
@@ -31,3 +34,4 @@
 	}
 
 }
+export default config;
