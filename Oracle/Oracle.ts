@@ -122,14 +122,14 @@ export  class ZapOracle {
             }
             this.contract.methods.setParams(
                     endpoint.responders,
-                    endpoint.responders
-                    .send({from: Config.publicKey, gas: DEFAULT_GAS});
+                    endpoint.responders)
+                    .send({from: Config.public_key, gas: DEFAULT_GAS});
             this.respondersQuantity =  endpoint.responders.length;
         } else {
             this.respondersQuantity = this.contract.methods.getNumResponders(
                     endpoint.responders,
-                    endpoint.responders
-                    .call({from: Config.publicKey, gas: DEFAULT_GAS});
+                    endpoint.responders)
+                    .call({from: Config.public_key, gas: DEFAULT_GAS});
           //Endpoint is initialized, so ignore all the setup part and listen to Query
             console.log("curve is already  set : ", await this.oracle.getCurve(endpoint.name))
         }

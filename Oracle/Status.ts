@@ -20,7 +20,7 @@ export const updateStatus = function(web3:any,oracle:any,endpoint:any){
   },3*60*1000) //every  minutes
 }
 
-async function update(web3:any,oracle:any,endpoint:string){
+async function update(web3:any, oracle:any, endpoint:string){
   console.log("update status")
   try{
     let time = new Date().getTime()
