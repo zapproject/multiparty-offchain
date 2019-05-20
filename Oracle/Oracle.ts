@@ -12,21 +12,27 @@ const IPFS_GATEWAY = "https://gateway.ipfs.io/ipfs/"
 import {connectStatus} from "./Status";
 import { addQuery, addResponse, handleResponsesInDb } from "../db/queries";
 import { handleRemoteResponses } from '../endpoints';
-import cron from 'node-cron';
+const cron = require('node-cron');
 import { ResponseEvent } from "./types";
 const DEFAULT_GAS = 60000;
+const MPO = require('../contracts/MultiPartyOracle.json');
+const Registry = require('../contracts/Registry.json');
 
 export  class ZapOracle {
     web3:any
     oracle:any
     zapToken:any
     respondersQuantity: any;
-    contract: any;
+    contract: {
+        MPO: any;
+        registry: any;
+    }
 
     constructor(){
         this.web3 = new Web3(new HDWalletProviderMem(Config.mnemonic, Config.NODE_URL))
         this.oracle = null
         this.zapToken = null
+        this.sendToBlockchain = this.sendToBlockchain.bind(this);
     }
     validateConfig() {
         const EndpointSchema = Config.EndpointSchema
@@ -46,12 +52,18 @@ export  class ZapOracle {
      * Starts listening for queries and calling handleQuery function
      */
     async initialize() {
+        this.contract = {
+            MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
+            registry: new this.web3.eth.Contract(Registry.abi, Config.contractAddress)
+        }
         await this.validateConfig();
         // Get the provider and contracts
-        await this.getProvider();
-        this.contract = new this.web3.eth.Contract(Config.contractABI, Config.contractAddress);
+        //await this.getProvider();
+        const accounts: string[] = await this.web3.eth.getAccounts();
+        console.log(this.contract.registry.methods, this.contract.MPO.methods, accounts)
         await this.delay(5000)
-        const title = await this.oracle.getTitle();
+
+        const title = await this.contract.registry.methods.getProviderTitle(accounts[0]).call();
         console.log(title)
         if (title.length == 0) {
             console.log("No provider found, Initializing provider");
@@ -120,13 +132,13 @@ export  class ZapOracle {
             else{
               console.log("No md value file, skipping")
             }
-            this.contract.methods.setParams(
+            this.contract.MPO.methods.setParams(
                     endpoint.responders,
                     endpoint.responders)
                     .send({from: Config.public_key, gas: DEFAULT_GAS});
             this.respondersQuantity =  endpoint.responders.length;
         } else {
-            this.respondersQuantity = this.contract.methods.getNumResponders(
+           this.respondersQuantity = this.contract.MPO.methods.getNumResponders(
                     endpoint.responders,
                     endpoint.responders)
                     .call({from: Config.public_key, gas: DEFAULT_GAS});
@@ -143,12 +155,14 @@ export  class ZapOracle {
             }
             this.handleQuery(event);
         });
+        this.mockQueries();
+
 
         console.log("Start listening to responses and saving to db");
         handleRemoteResponses((err) => console.log(err), addResponse);
 
         console.log("Everty minute check for nessesary number of responses to each query and for timed out queries and then send responses to subscribers");
-        cron.schedule('* * * * *', handleResponsesInDb(this.respondersQuantity, this.sendToBlockchain));
+        cron.schedule('* * * * *', () => handleResponsesInDb(this.respondersQuantity || 5, this.sendToBlockchain));
     }
     
 
@@ -177,6 +191,7 @@ export  class ZapOracle {
         console.log("Wallet contains:", fromWei(ethBalance,"ether"),"ETH ;", fromWei(zapBalance,"ether"),"ZAP");
     }
 
+  
 //==============================================================================================================
 // Query Handler
 //==============================================================================================================
@@ -196,35 +211,52 @@ export  class ZapOracle {
         const event: any = {
             queryId: results.id,
             query: results.query,
-            endpoint: hexToUtf8(results.endpoint),
+            endpoint: (results.endpoint),//hexToUtf8(results.endpoint),
             subscriber: results.subscriber,
-            endpointParams: results.endpointParams.map(hexToUtf8),
+            endpointParams: results.endpointParams,//.map(hexToUtf8),
             onchainSub: results.onchainSubscriber
         }
-        if (event.endpoint != Config.EndpointSchema.name) {
+
+       /* if (event.endpoint != Config.EndpointSchema.name) {
             console.log('Unable to find the callback for', event.endpoint);
             return;
-        }
+        }*/
         console.log(results)
         console.log(`Received query to ${event.endpoint} from ${event.onchainSub ? 'contract' : 'offchain subscriber'} at address ${event.subscriber}`);
         console.log(`Query ID ${event.queryId.substring(0, 8)}...: "${event.query}". Parameters: ${event.endpointParams}`);
-        await addQuery(event);
-        
+        await addQuery(event);   
     }
 
-    async sendToBlockchain(responses: Array<ResponseEvent>) {
-        const DEFAULT_GAS = 300000
-        const responsesList = responses.map(
-            ({hash, sigv, sigrs, response, queryId}) => {
-                this.contract.methods.callback(
-                    queryId,
-                    response,
-                    hash,
-                    sigv,
-                    sigrs,
-                    ).send({from: Config.public_key, gas: DEFAULT_GAS});
-            }
-        )
-        return Promise.all(responsesList);
+    public mockQueries() {
+        for(let i = 0; i <= 3; i++) {
+            this.handleQuery(
+               {
+                    returnValues: {
+                        id: i ? i.toString() : '999',
+                        query: 'quo te agis?',
+                        endpoint: '0x6892ffc6',
+                        subscriber: 'subscriber',
+                        endpointParams: ['0x6892ffc6'],
+                        onchainSubscriber: 'onchainSubscriber'
+                    }
+                }
+            );
+        }
+    }
+
+    async sendToBlockchain(responses: Object) {
+        console.log('respy', responses);
+       const promises = [];
+        for(let queryId in responses) {
+            const { hash, sigv, response, sigrs } = responses[queryId];
+            promises.push(this.contract.MPO.methods.callback(
+                queryId,
+                response,
+                hash,
+                sigv,
+                sigrs,
+                ).send({from: Config.public_key, gas: DEFAULT_GAS}));
+        }
+        return Promise.all(promises);
     }
   }

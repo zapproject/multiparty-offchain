@@ -3,9 +3,9 @@ module.exports = {
     client: 'mysql',
     connection: {
       host : '127.0.0.1',
-      user : 'oracle',
-      password : 'multipass',
-      database : 'coinmarketcap'
+      user : 'root',
+      password : '1',
+      database : 'oracle'
     },
     migrations: {
       directory: __dirname + '/db/migrations',

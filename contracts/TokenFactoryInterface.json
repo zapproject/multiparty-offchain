@@ -1,0 +1,374 @@
+{
+  "contractName": "TokenFactoryInterface",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "name": "_symbol",
+          "type": "string"
+        }
+      ],
+      "name": "create",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "metadata": "",
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "pragma solidity ^0.4.0;\n\nimport \"./FactoryTokenInterface.sol\";\n\ncontract TokenFactoryInterface {\n    function create(string _name, string _symbol) public returns (FactoryTokenInterface);\n}\n",
+  "sourcePath": "/home/user/multiparty-oracle/contracts/zap/lib/token/TokenFactoryInterface.sol",
+  "ast": {
+    "absolutePath": "/home/user/multiparty-oracle/contracts/zap/lib/token/TokenFactoryInterface.sol",
+    "exportedSymbols": {
+      "TokenFactoryInterface": [
+        5789
+      ]
+    },
+    "id": 5790,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 5778,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:23:24"
+      },
+      {
+        "absolutePath": "/home/user/multiparty-oracle/contracts/zap/lib/token/FactoryTokenInterface.sol",
+        "file": "./FactoryTokenInterface.sol",
+        "id": 5779,
+        "nodeType": "ImportDirective",
+        "scope": 5790,
+        "sourceUnit": 5056,
+        "src": "25:37:24",
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": false,
+        "id": 5789,
+        "linearizedBaseContracts": [
+          5789
+        ],
+        "name": "TokenFactoryInterface",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": null,
+            "documentation": null,
+            "id": 5788,
+            "implemented": false,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "create",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 5784,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 5781,
+                  "name": "_name",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 5788,
+                  "src": "117:12:24",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 5780,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "117:6:24",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 5783,
+                  "name": "_symbol",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 5788,
+                  "src": "131:14:24",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 5782,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "131:6:24",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "116:30:24"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 5787,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 5786,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 5788,
+                  "src": "163:21:24",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_FactoryTokenInterface_$5055",
+                    "typeString": "contract FactoryTokenInterface"
+                  },
+                  "typeName": {
+                    "contractScope": null,
+                    "id": 5785,
+                    "name": "FactoryTokenInterface",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 5055,
+                    "src": "163:21:24",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_FactoryTokenInterface_$5055",
+                      "typeString": "contract FactoryTokenInterface"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "162:23:24"
+            },
+            "scope": 5789,
+            "src": "101:85:24",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 5790,
+        "src": "64:124:24"
+      }
+    ],
+    "src": "0:189:24"
+  },
+  "legacyAST": {
+    "absolutePath": "/home/user/multiparty-oracle/contracts/zap/lib/token/TokenFactoryInterface.sol",
+    "exportedSymbols": {
+      "TokenFactoryInterface": [
+        5789
+      ]
+    },
+    "id": 5790,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 5778,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:23:24"
+      },
+      {
+        "absolutePath": "/home/user/multiparty-oracle/contracts/zap/lib/token/FactoryTokenInterface.sol",
+        "file": "./FactoryTokenInterface.sol",
+        "id": 5779,
+        "nodeType": "ImportDirective",
+        "scope": 5790,
+        "sourceUnit": 5056,
+        "src": "25:37:24",
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": false,
+        "id": 5789,
+        "linearizedBaseContracts": [
+          5789
+        ],
+        "name": "TokenFactoryInterface",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": null,
+            "documentation": null,
+            "id": 5788,
+            "implemented": false,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "create",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 5784,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 5781,
+                  "name": "_name",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 5788,
+                  "src": "117:12:24",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 5780,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "117:6:24",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 5783,
+                  "name": "_symbol",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 5788,
+                  "src": "131:14:24",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_memory_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 5782,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "131:6:24",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "116:30:24"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 5787,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 5786,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 5788,
+                  "src": "163:21:24",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_FactoryTokenInterface_$5055",
+                    "typeString": "contract FactoryTokenInterface"
+                  },
+                  "typeName": {
+                    "contractScope": null,
+                    "id": 5785,
+                    "name": "FactoryTokenInterface",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 5055,
+                    "src": "163:21:24",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_FactoryTokenInterface_$5055",
+                      "typeString": "contract FactoryTokenInterface"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "162:23:24"
+            },
+            "scope": 5789,
+            "src": "101:85:24",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 5790,
+        "src": "64:124:24"
+      }
+    ],
+    "src": "0:189:24"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.24+commit.e67f0147.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.0.9",
+  "updatedAt": "2019-05-20T11:24:12.109Z",
+  "devdoc": {
+    "methods": {}
+  },
+  "userdoc": {
+    "methods": {}
+  }
+}
