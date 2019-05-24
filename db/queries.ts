@@ -3,6 +3,7 @@ import { QueryEvent, ResponseEvent } from '../Oracle/types';
 import mysql from 'mysql';
 import cron from 'node-cron';
 import Config from "../Oracle/Config.js";
+const eutil = require('ethereumjs-util');
 
 
 export enum QueryStatus {
@@ -20,13 +21,11 @@ export function addQuery(event: QueryEvent): any {
 }
 
 export async function addResponse(event: ResponseEvent): Promise<any> {
-  const {response, hash, sigv, sigrs} = event;
+  const {response, signature} = event;
   return await knex('responses').insert({
     queryId: String(event.queryId),
     response,
-    hash,
-    sigv,
-    sigrs,
+    signature,
     status: 'Active'
   }).returning('id');
 }
@@ -87,7 +86,18 @@ export function getResponses(count) {
 
  export async function handleResponsesInDb(quantity, callContractRespond) {
   const responses = await getResponses(quantity);
-  const queriesList = responses.reduce((obj, {hash, sigv, sigrs, response, queryId}) => {
+  const queriesList = responses.reduce((obj, {signature, response, queryId}) => {
+    signature = JSON.parse(signature);
+    const msgHash = eutil.hashPersonalMessage(Buffer.from(response));
+    const hash = '0x' + msgHash.toString('hex');
+    const sig = '0x'+signature.toString('hex');
+    const sigv = parseInt(signature.v.toString(10));
+    const sigrs = [];
+    sigrs.push('0x' + signature.r.toString('hex'))
+    sigrs.push('0x' + signature.s.toString('hex'))
+    const pubKey = eutil.ecrecover(msgHash,signature.v, signature.r, signature.s)
+    const sender = eutil.publicToAddress(pubKey)
+    const addr = eutil.bufferToHex(sender)
     if(!obj[queryId]) obj[queryId] = {hash: [], sigv: [], sigrs: [], response: []};
     return {...obj, [queryId]: {
       hash: [...obj[queryId]['hash'], hash],

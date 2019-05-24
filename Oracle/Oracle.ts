@@ -4,7 +4,7 @@ const Web3 = require('web3');
 import { ZapProvider } from "@zapjs/provider";
 import {ZapToken} from "@zapjs/zaptoken"
 const HDWalletProviderMem = require("truffle-hdwallet-provider");
-const {toBN,fromWei, hexToUtf8} =require("web3-utils");
+const {utf8ToHex, toBN, hexToUtf8, bytesToHex, hexToBytes, toHex, fromWei} = require("web3-utils");
 const assert = require("assert")
 const IPFS = require("ipfs-mini")
 const ipfs = new IPFS({host:'ipfs.infura.io',port:5001,protocol:'https'})
@@ -14,9 +14,13 @@ import { addQuery, addResponse, handleResponsesInDb } from "../db/queries";
 import { handleRemoteResponses } from '../endpoints';
 const cron = require('node-cron');
 import { ResponseEvent } from "./types";
-const DEFAULT_GAS = 60000;
+import { config } from "bluebird";
+const DEFAULT_GAS = 20000000000;
 const MPO = require('../contracts/MultiPartyOracle.json');
+const MPOStorage = require('../contracts/MPOStorage.json');
 const Registry = require('../contracts/Registry.json');
+const Subscriber = require("../contracts/TestClient.json");
+const Coordinator = require("../contracts/ZapCoordinator.json");
 
 export  class ZapOracle {
     web3:any
@@ -26,6 +30,9 @@ export  class ZapOracle {
     contract: {
         MPO: any;
         registry: any;
+        subscriber: any;
+        MPOStorage: any;
+        Coordinator: any;
     }
 
     constructor(){
@@ -52,18 +59,34 @@ export  class ZapOracle {
      * Starts listening for queries and calling handleQuery function
      */
     async initialize() {
-        this.contract = {
+       this.contract = {
             MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
-            registry: new this.web3.eth.Contract(Registry.abi, Config.contractAddress)
+            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6"),
+            registry: new this.web3.eth.Contract(Registry.abi, Config.contractAddress),
+            subscriber: new this.web3.eth.Contract(Subscriber.abi, Config.contractAddress),
+            Coordinator: new this.web3.eth.Contract(Coordinator.abi, Config.contractAddress),
         }
-        await this.validateConfig();
-        // Get the provider and contracts
-        //await this.getProvider();
         const accounts: string[] = await this.web3.eth.getAccounts();
-        console.log(this.contract.registry.methods, this.contract.MPO.methods, accounts)
+        console.log(await this.contract.MPOStorage.methods.owner().call());
+        await this.contract.MPOStorage.methods.transferOwnership('0x6397c23f4e8914197699ba54Fc01333053C967cE').send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'})
+        await this.contract.MPO.methods.setup(['0x4d4996a81cC07cA3Dc8B648Ee1e4bCa6d0c9D022']).send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'})
+        //this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
+       // console.log('res:', this.respondersQuantity);
+       // await this.getProvider();
+     //   console.log(this.oracle);
+       /* await this.contract.registry.methods.initiateProvider(
+            toBN(23456).toString(),
+            utf8ToHex("OffchainProvider")).send(
+            {from: Config.public_key});
+           // await this.getProvider();*/
+     /*  const res: string = await this.oracle.initiateProvider({title: Config.title, public_key: Config.public_key});
+       await this.validateConfig();
+        //const accounts: string[] = await this.web3.eth.getAccounts();
+        //console.log(this.contract.registry.methods, this.contract.MPO.methods, accounts)
         await this.delay(5000)
 
-        const title = await this.contract.registry.methods.getProviderTitle(accounts[0]).call();
+        //const title = await this.contract.registry.methods.getProviderTitle(accounts[0]).call();
+        const title = this.oracle.getProviderTitle();
         console.log(title)
         if (title.length == 0) {
             console.log("No provider found, Initializing provider");
@@ -132,29 +155,35 @@ export  class ZapOracle {
             else{
               console.log("No md value file, skipping")
             }
-            this.contract.MPO.methods.setParams(
+          /*  this.contract.MPO.methods.setParams(
                     endpoint.responders,
                     endpoint.responders)
                     .send({from: Config.public_key, gas: DEFAULT_GAS});
-            this.respondersQuantity =  endpoint.responders.length;
-        } else {
-           this.respondersQuantity = this.contract.MPO.methods.getNumResponders(
+            this.respondersQuantity =  endpoint.responders.length;*/
+   //     } else {
+           /*this.respondersQuantity = this.contract.MPO.methods.getNumResponders(
                     endpoint.responders,
                     endpoint.responders)
                     .call({from: Config.public_key, gas: DEFAULT_GAS});
           //Endpoint is initialized, so ignore all the setup part and listen to Query
-            console.log("curve is already  set : ", await this.oracle.getCurve(endpoint.name))
-        }
+            console.log("curve is already  set : ", await this.oracle.getCurve(endpoint.name))*/
+      //  }
         //UPDATE STATUS TO ZAP
-        connectStatus(this.web3,endpoint)
+       // connectStatus(this.web3,endpoint)
 
-        console.log("Start listening to queries and saving to db");
+    /*    console.log("Start listening to queries and saving to db");
         this.oracle.listenQueries({}, (err: any, event: any) => {
             if (err) {
                 throw err;
             }
             this.handleQuery(event);
         });
+        /*this.respondersQuantity = this.contract.MPO.methods.getNumResponders(
+            endpoint.responders,
+            endpoint.responders)
+            .call({from: Config.public_key, gas: DEFAULT_GAS});*/
+        this.contract.MPO.events.allEvents({}, { fromBlock: 0, toBlock: 'latest' }, (err, res) => {console.log("res:", res)});
+
         this.mockQueries();
 
 
@@ -178,6 +207,7 @@ export  class ZapOracle {
         const accounts: string[] = await this.web3.eth.getAccounts();
         if (accounts.length == 0) throw('Unable to find an account in the current web3 provider, check your Config variables');
         const owner: string = accounts[0];
+        console.log('id', owner, await this.web3.eth.net.getId())
         this.oracle = new ZapProvider(owner, {
             networkId: (await this.web3.eth.net.getId()).toString(),
             networkProvider:this.web3.currentProvider
@@ -227,7 +257,7 @@ export  class ZapOracle {
         await addQuery(event);   
     }
 
-    public mockQueries() {
+    public async  mockQueries() {
         for(let i = 0; i <= 3; i++) {
             this.handleQuery(
                {
@@ -242,6 +272,9 @@ export  class ZapOracle {
                 }
             );
         }
+        const params = [utf8ToHex("ETH"), utf8ToHex("BTC"), "0x"+"0".repeat(64-"3".length)+"3"];
+       // await this.contract.subscriber.methods.testQuery('0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6', "hi", utf8ToHex("Nonproviders"), params)
+        //.send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'});    
     }
 
     async sendToBlockchain(responses: Object) {
@@ -254,7 +287,7 @@ export  class ZapOracle {
                 response,
                 hash,
                 sigv,
-                sigrs,
+                ...sigrs,
                 ).send({from: Config.public_key, gas: DEFAULT_GAS}));
         }
         return Promise.all(promises);

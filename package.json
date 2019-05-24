@@ -36,7 +36,8 @@
     "websocket": "^1.0.28",
     "ipfs-mini": "1.1.5",
     "socket.io-client": "2.2.0",
-    "request-promise": "4.2.4"
+    "request-promise": "4.2.4",
+    "ethereumjs-util": "6.1.0"
   },
   "devDependencies": {
     "@types/jest": "^23.3.7",

@@ -1,9 +1,9 @@
 const config = {
 	"title": "Template-Oracle",
-	"public_key": "0x3fda6E7e9E5AEca8c6B3CD8c32079fB97a4cb221",
+	"public_key": "0x6397c23f4e8914197699ba54Fc01333053C967cE",
 	"NODE_URL": "ws://127.0.0.1:7545",
 	"mnemonic" : "grass female find slogan motion old merry reject flame direct cycle stomach",
-	"contractAddress": "",
+	"contractAddress": "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6",
 	"contractABI": require("../contracts/MultiPartyOracle.json"),
 	"STATUS_URL":"",
 	"timeout": 180000,
