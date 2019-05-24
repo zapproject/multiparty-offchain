@@ -8,39 +8,16 @@ import {ZapProvider} from "@zapjs/provider"
 import {ZapBondage} from "@zapjs/bondage"
 const HDWalletProviderMem = require("truffle-hdwallet-provider");
 const io =require("socket.io-client");
-import Config from "./Config.js"
-
-const rq = require("request-promise")
-const ZAP_SERVER = "http://localhost:8000"
+import Config from "./Config.js";
+const rq = require("request-promise");
+const ZAP_SERVER = "http://localhost:8000";
+const eutil = require('ethereumjs-util');
 
 export const updateStatus = function(web3:any,oracle:any,endpoint:any){
-  update(web3,oracle,endpoint)
+  /*update(web3,oracle,endpoint)
   setInterval(()=>{
     update(web3,oracle,endpoint)
-  },3*60*1000) //every  minutes
-}
-
-async function update(web3:any, oracle:any, endpoint:string){
-  console.log("update status")
-  try{
-    let time = new Date().getTime()
-    const data = endpoint + ":"+time
-    console.log(data)
-    let signature = await web3.eth.sign(data,oracle)
-    let options = {
-      method:"POST",
-      uri:ZAP_SERVER+"/update",
-      body:{
-        data,
-        signature
-      },
-      json:true
-    }
-    const result = await rq(options)
-    console.log(result)
-  }catch(e){
-    console.error(e)
-  }
+  },3*60*1000) //every  minutes*/
 }
 
 
