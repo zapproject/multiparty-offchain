@@ -9,23 +9,6 @@ const config = {
 	"timeout": 180000,
 	"EndpointSchema": {
 		"name": "qwerty",
-		"curve": [2,
-			5000000000000000000,
-			2000000000000000000,
-			1000,
-			2,
-			0,
-			3000000000000000000,
-			1000000000000000000
-		],
-		"broker": "",
-		"md": "Adding description for your Oracle here",
-		"queryList": [{
-			"query": "Query string that your Oracle will accept",
-			"params": [],
-			"dynamic": false,
-			"responseType": "[int]"
-		}],
 		"responders": [
 			"address1",
 			"address2",

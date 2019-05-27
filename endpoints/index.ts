@@ -1,5 +1,5 @@
 const http = require('http');
-export function handleRemoteResponses(err, cb) {
+export function handleRemoteResponses(err: any, responders: Array<string>, cb: Function) {
 const server = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === "/response") {
     let body = '';
@@ -8,7 +8,7 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
         res.end('ok');
-        cb(JSON.parse(body));
+        cb(responders, JSON.parse(body));
     });
 }
    

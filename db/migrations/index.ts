@@ -8,7 +8,10 @@ export const up = function(knex: Knex, Promise) {
   }).createTable('responses', table => {
     table.increments('id').primary();
     table.string('queryId', 255).notNullable();
-    table.text('signature').notNullable();
+    table.text('hash').notNullable();
+    table.string('sigv', 255).notNullable();
+    table.string('sigrs', 255).notNullable();
+    table.string('pubkey', 255).notNullable();
     table.string('status', 255);
     table.text('response').notNullable();
     table.unique(['queryId', 'hash'], 'unique_response');

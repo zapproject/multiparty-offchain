@@ -20,12 +20,29 @@ export function addQuery(event: QueryEvent): any {
   }).returning('id');
 }
 
-export async function addResponse(event: ResponseEvent): Promise<any> {
-  const {response, signature} = event;
+export async function addResponse(responders: Array<string>, event: ResponseEvent): Promise<any> {
+  const { response } = event;
+  const signature = JSON.parse(event.signature);
+  const msgHash = eutil.hashPersonalMessage(Buffer.from(response));
+  const hash = '0x' + msgHash.toString('hex');
+  //const sig = '0x'+signature.toString('hex');
+  const sigv = parseInt(signature.v.toString(10));
+  const sigrs = [];
+  sigrs.push('0x' + signature.r.toString('hex'));
+  sigrs.push('0x' + signature.s.toString('hex'));
+  const pubKey = eutil.ecrecover(msgHash,signature.v, signature.r, signature.s);
+  if (responders.indexOf(pubKey) === -1) {
+    console.log(`Public key not listed in contract: ${pubKey}`);
+    return;
+  } 
+  const _sigrs = JSON.stringify(sigrs);
   return await knex('responses').insert({
     queryId: String(event.queryId),
     response,
-    signature,
+    hash,
+    sigv,
+    _sigrs,
+    pubKey,
     status: 'Active'
   }).returning('id');
 }
@@ -84,20 +101,12 @@ export function getResponses(count) {
     });  
 }
 
- export async function handleResponsesInDb(quantity, callContractRespond) {
+ export async function handleResponsesInDb(quantity, responders, callContractRespond) {
   const responses = await getResponses(quantity);
-  const queriesList = responses.reduce((obj, {signature, response, queryId}) => {
-    signature = JSON.parse(signature);
-    const msgHash = eutil.hashPersonalMessage(Buffer.from(response));
-    const hash = '0x' + msgHash.toString('hex');
-    const sig = '0x'+signature.toString('hex');
-    const sigv = parseInt(signature.v.toString(10));
-    const sigrs = [];
-    sigrs.push('0x' + signature.r.toString('hex'))
-    sigrs.push('0x' + signature.s.toString('hex'))
-    const pubKey = eutil.ecrecover(msgHash,signature.v, signature.r, signature.s)
-    const sender = eutil.publicToAddress(pubKey)
-    const addr = eutil.bufferToHex(sender)
+  const queriesList = responses.reduce((obj, { hash, sig, sigv, _sigrs, pubKey, response, queryId}) => {
+    const sigrs = JSON.parse(_sigrs);
+    const sender = eutil.publicToAddress(pubKey);
+    const addr = eutil.bufferToHex(sender);
     if(!obj[queryId]) obj[queryId] = {hash: [], sigv: [], sigrs: [], response: []};
     return {...obj, [queryId]: {
       hash: [...obj[queryId]['hash'], hash],

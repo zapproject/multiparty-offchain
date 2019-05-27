@@ -1,4 +1,3 @@
-import {getResponse} from "./Responder";
 import Config from "./Config.js";
 const Web3 = require('web3');
 import { ZapProvider } from "@zapjs/provider";
@@ -15,6 +14,7 @@ import { handleRemoteResponses } from '../endpoints';
 const cron = require('node-cron');
 import { ResponseEvent } from "./types";
 import { config } from "bluebird";
+import { exists } from "fs";
 const DEFAULT_GAS = 20000000000;
 const MPO = require('../contracts/MultiPartyOracle.json');
 const MPOStorage = require('../contracts/MPOStorage.json');
@@ -23,10 +23,11 @@ const Subscriber = require("../contracts/TestClient.json");
 const Coordinator = require("../contracts/ZapCoordinator.json");
 
 export  class ZapOracle {
-    web3:any
-    oracle:any
-    zapToken:any
-    respondersQuantity: any;
+    private web3: any;
+    private oracle: any;
+    private zapToken: any
+    private respondersQuantity: number;
+    private responders: Array<string>; 
     contract: {
         MPO: any;
         registry: any;
@@ -42,22 +43,11 @@ export  class ZapOracle {
         this.sendToBlockchain = this.sendToBlockchain.bind(this);
     }
     validateConfig() {
-        const EndpointSchema = Config.EndpointSchema
         assert(Config.mnemonic, "mnemonic is required to run Oracle")
         assert(Config.title, "title is required to run Oracle")
         assert(Config.public_key, "public_key is required to run Oracle")
-        assert(EndpointSchema.name, "Endpoint's name is required")
-        assert(EndpointSchema.curve, `Curve is required for endpoint ${EndpointSchema.name}`)
-        assert(EndpointSchema.queryList.length > 0, `query list is recommended for data offer`)
-
     }
 
-
-    /**
-     * Initializes the oracle. Creates the provider if it does not exist already.
-     * For each endpoint in schema, create curve and params
-     * Starts listening for queries and calling handleQuery function
-     */
     async initialize() {
        this.contract = {
             MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
@@ -69,129 +59,26 @@ export  class ZapOracle {
         const accounts: string[] = await this.web3.eth.getAccounts();
         console.log(await this.contract.MPOStorage.methods.owner().call());
         await this.contract.MPOStorage.methods.transferOwnership('0x6397c23f4e8914197699ba54Fc01333053C967cE').send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'})
-        await this.contract.MPO.methods.setup(['0x4d4996a81cC07cA3Dc8B648Ee1e4bCa6d0c9D022']).send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'})
-        //this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
-       // console.log('res:', this.respondersQuantity);
-       // await this.getProvider();
-     //   console.log(this.oracle);
-       /* await this.contract.registry.methods.initiateProvider(
-            toBN(23456).toString(),
-            utf8ToHex("OffchainProvider")).send(
-            {from: Config.public_key});
-           // await this.getProvider();*/
-     /*  const res: string = await this.oracle.initiateProvider({title: Config.title, public_key: Config.public_key});
-       await this.validateConfig();
-        //const accounts: string[] = await this.web3.eth.getAccounts();
-        //console.log(this.contract.registry.methods, this.contract.MPO.methods, accounts)
-        await this.delay(5000)
-
-        //const title = await this.contract.registry.methods.getProviderTitle(accounts[0]).call();
-        const title = this.oracle.getProviderTitle();
-        console.log(title)
-        if (title.length == 0) {
-            console.log("No provider found, Initializing provider");
-            const res: string = await this.oracle.initiateProvider({title: Config.title, public_key: Config.public_key});
-            console.log("Successfully created oracle", Config.title);
-        }
-        else {
-            console.log("Oracle exists");
-            if( title != Config.title){
-              console.log("Changing title")
-              const res:string = await this.oracle.setTitle({title:Config.title})
-              console.log("Successfully changed Title : ",res)
-
+        this.responders = await this.contract.MPO.methods.getResponders().call();
+        if(!this.responders.length) {
+            this.responders = await this.contract.MPO.methods.setup(Config.EndpointSchema.responders).send({from: Config.public_key});
+            if (this.responders.length) {
+                console.log("list of responders is required to run Oracle");
+                process.exit(1);
             }
         }
-        //Create endpoints if not exists
-        const endpoint = Config.EndpointSchema
-        let curveSet = await this.oracle.isEndpointCreated(endpoint.name)
-        if (!curveSet) {
-            //create endpoint
-            console.log("No matching Endpoint found, creating endpoint")
-            if(endpoint.broker == "")
-                endpoint.broker = "0x0000000000000000000000000000000000000000"
-            const createEndpoint = await this.oracle.initiateProviderCurve({endpoint: endpoint.name, term: endpoint.curve, broker: endpoint.broker});
-            console.log("Successfully created endpoint ", createEndpoint)
-            //setting endpoint params with indexed query string
-            let endpointParams:string[] = []
-            for(let query of endpoint.queryList){
-                endpointParams.push("Query string :"+ query.query +", Query params :"+JSON.stringify(query.params)+", Response Type: "+query.responseType)
-            }
-            console.log("Setting endpoint params")
+        this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
 
-            const txid = await this.oracle.setEndpointParams({endpoint: endpoint.name, endpoint_params: endpointParams})
-            console.log(txid)
-            // setting {endpoint.json} file and save it to ipfs
-            let ipfs_endpoint:any = {}
-            ipfs_endpoint.name =  endpoint.name
-            ipfs_endpoint.curve = endpoint.curve
-            ipfs_endpoint.broker = endpoint.broker
-            ipfs_endpoint.params = endpointParams
-            // add to ipfs file
-            console.log("Saving Endpoint info into ipfs")
-            ipfs.addJSON(ipfs_endpoint,(err:any,res:any)=>{
-                if(err){
-                    console.error("Fail to save endpoint data to ipfs : ", ipfs_endpoint)
-                    process.exit(err)
-                }
-                //save ipfs hash to this.oracle param
-                console.log("Successfully saved Endpoint json file into ipfs, saving ipfs link to oracle's params")
-                this.oracle.setProviderParameter({key:`${endpoint.name}.json`,value:IPFS_GATEWAY+res})
-                    .then((txid:string)=>{console.log("saved endpoint info to param with hash : ",res,txid)})
-            })
-            //if there is a md string => save to provider params
-            if(endpoint.md && endpoint.md!=""){
-                ipfs.add(endpoint.md,(err:any,res:any)=>{
-                  if(err){
-                      console.error("Fail to save endpoint .md file to ipfs", endpoint)
-                      process.exit(err)
-                  }
-                  //set ipfs hash as provider param
-                  this.oracle.setProviderParameter({key:`${endpoint.name}.md`,value:IPFS_GATEWAY+res})
-                    .then((txid:string)=>{console.log("saved endpoint info to param with hash : ",res,txid)})
-
-                })
-            }
-            else{
-              console.log("No md value file, skipping")
-            }
-          /*  this.contract.MPO.methods.setParams(
-                    endpoint.responders,
-                    endpoint.responders)
-                    .send({from: Config.public_key, gas: DEFAULT_GAS});
-            this.respondersQuantity =  endpoint.responders.length;*/
-   //     } else {
-           /*this.respondersQuantity = this.contract.MPO.methods.getNumResponders(
-                    endpoint.responders,
-                    endpoint.responders)
-                    .call({from: Config.public_key, gas: DEFAULT_GAS});
-          //Endpoint is initialized, so ignore all the setup part and listen to Query
-            console.log("curve is already  set : ", await this.oracle.getCurve(endpoint.name))*/
-      //  }
-        //UPDATE STATUS TO ZAP
-       // connectStatus(this.web3,endpoint)
-
-    /*    console.log("Start listening to queries and saving to db");
-        this.oracle.listenQueries({}, (err: any, event: any) => {
-            if (err) {
-                throw err;
-            }
-            this.handleQuery(event);
-        });
-        /*this.respondersQuantity = this.contract.MPO.methods.getNumResponders(
-            endpoint.responders,
-            endpoint.responders)
-            .call({from: Config.public_key, gas: DEFAULT_GAS});*/
         this.contract.MPO.events.allEvents({}, { fromBlock: 0, toBlock: 'latest' }, (err, res) => {console.log("res:", res)});
 
         this.mockQueries();
 
 
         console.log("Start listening to responses and saving to db");
-        handleRemoteResponses((err) => console.log(err), addResponse);
+        handleRemoteResponses((err) => console.log(err), this.responders, addResponse);
 
         console.log("Everty minute check for nessesary number of responses to each query and for timed out queries and then send responses to subscribers");
-        cron.schedule('* * * * *', () => handleResponsesInDb(this.respondersQuantity || 5, this.sendToBlockchain));
+        cron.schedule('* * * * *', () => handleResponsesInDb(this.respondersQuantity, this.responders, this.sendToBlockchain));
     }
     
 
@@ -202,37 +89,6 @@ export  class ZapOracle {
      */
 
     delay = (ms:number) => new Promise(_ => setTimeout(_, ms));
-    async getProvider() {
-        // loads the first account for this web3 provider
-        const accounts: string[] = await this.web3.eth.getAccounts();
-        if (accounts.length == 0) throw('Unable to find an account in the current web3 provider, check your Config variables');
-        const owner: string = accounts[0];
-        console.log('id', owner, await this.web3.eth.net.getId())
-        this.oracle = new ZapProvider(owner, {
-            networkId: (await this.web3.eth.net.getId()).toString(),
-            networkProvider:this.web3.currentProvider
-        });
-        this.zapToken = new ZapToken({
-            networkId: (await this.web3.eth.net.getId()).toString(),
-            networkProvider:this.web3.currentProvider
-        })
-        const ethBalance = await this.web3.eth.getBalance(owner)
-        const zapBalance = await this.zapToken.balanceOf(owner)
-        console.log("Wallet contains:", fromWei(ethBalance,"ether"),"ETH ;", fromWei(zapBalance,"ether"),"ZAP");
-    }
-
-  
-//==============================================================================================================
-// Query Handler
-//==============================================================================================================
-
-    /**
-     * Handles a query
-     * @param writer - HTTP Web3 instance to respond to query with
-     * @param queryEvent - Web3 incoming query event
-     * @returns ZapProvider instantiated
-     */
-
 
     async handleQuery(queryEvent: any): Promise<void> {
         const results: any = queryEvent.returnValues;
@@ -246,11 +102,6 @@ export  class ZapOracle {
             endpointParams: results.endpointParams,//.map(hexToUtf8),
             onchainSub: results.onchainSubscriber
         }
-
-       /* if (event.endpoint != Config.EndpointSchema.name) {
-            console.log('Unable to find the callback for', event.endpoint);
-            return;
-        }*/
         console.log(results)
         console.log(`Received query to ${event.endpoint} from ${event.onchainSub ? 'contract' : 'offchain subscriber'} at address ${event.subscriber}`);
         console.log(`Query ID ${event.queryId.substring(0, 8)}...: "${event.query}". Parameters: ${event.endpointParams}`);

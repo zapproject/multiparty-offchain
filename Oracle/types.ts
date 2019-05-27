@@ -13,12 +13,6 @@ export interface ResponseEvent {
   signature: string
 }
 
-export interface EndpointSchema {
-  name: string,
-  curve: number[],
-  queryList: QuerySchema[]
-}
-
 export interface QuerySchema {
   params: string[],
   query: string,
