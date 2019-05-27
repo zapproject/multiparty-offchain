@@ -13,14 +13,6 @@ const rq = require("request-promise");
 const ZAP_SERVER = "http://localhost:8000";
 const eutil = require('ethereumjs-util');
 
-export const updateStatus = function(web3:any,oracle:any,endpoint:any){
-  /*update(web3,oracle,endpoint)
-  setInterval(()=>{
-    update(web3,oracle,endpoint)
-  },3*60*1000) //every  minutes*/
-}
-
-
 export const connectStatus= async (web3:any,endpoint:any)=>{
   let accounts = await web3.eth.getAccounts()
   let oracle = accounts[0]

@@ -1,6 +1,6 @@
 const config = {
 	"title": "Template-Oracle",
-	"SERVER_URL": "",
+	"SERVER_URL": "localhost:3000",
 	"NODE_URL": "ws://127.0.0.1:7545",
 	"mnemonic" : "grass female find slogan motion old merry reject flame direct cycle stomach",
 	"contractAddress": "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6",
