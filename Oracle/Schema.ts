@@ -1,22 +1,10 @@
-import { EndpointSchema } from './types';
-
-export const Endpoints: EndpointSchema[] = [
-  {
-    name: 'CoinBaseSource',
-    curve: [1, 1, 10000],
-    queryList: [
-      {
-        query: 'price',
-        params: ['{coin}', '{time}'],
-        response: ['{price}', '{notaryHash}'],
-        getResponse: () => Promise.resolve(['response text'])
-      },
-      /* {
-        query: 'volume',
-        params: ['{coin}', '{period}'],
-        response: ['{volume}', '{notaryHash}'],
-        getResponse: () => ['response text']
-      }, */
-    ]
-  },
-];
+const config = {
+	"title": "Template-Oracle",
+	"NODE_URL": "ws://127.0.0.1:7545",
+	"mnemonic" : "grass female find slogan motion old merry reject flame direct cycle stomach",
+	"contractAddress": "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6",
+	"contractABI": require("../contracts/MultiPartyOracle.json"),
+	"STATUS_URL":"",
+	"timeout": 180000,
+	"responders": ""
+}

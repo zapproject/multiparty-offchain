@@ -23,7 +23,7 @@ export function addQuery(event: QueryEvent): any {
 export async function addResponse(responders: Array<string>, event: ResponseEvent): Promise<any> {
   const { response } = event;
   const signature = JSON.parse(event.signature);
-  const msgHash = eutil.hashPersonalMessage(Buffer.from(response));
+  const msgHash = eutil.hashPersonalMessage(Buffer.from(response.toString()));
   const hash = '0x' + msgHash.toString('hex');
   //const sig = '0x'+signature.toString('hex');
   const sigv = parseInt(signature.v.toString(10));
@@ -66,7 +66,8 @@ export function flushResponded(keys) {
       return knex('responses')
       .whereIn('queryId', idsList)
       .del()
-    });
+    })
+    .then(() => idsList);
   });
 }
 
@@ -101,8 +102,9 @@ export function getResponses(count) {
     });  
 }
 
- export async function handleResponsesInDb(quantity, responders, callContractRespond) {
+export async function handleResponsesInDb(quantity, responders, callContractRespond) {
   const responses = await getResponses(quantity);
+
   const queriesList = responses.reduce((obj, { hash, sig, sigv, _sigrs, pubKey, response, queryId}) => {
     const sigrs = JSON.parse(_sigrs);
     const sender = eutil.publicToAddress(pubKey);
@@ -113,13 +115,18 @@ export function getResponses(count) {
       sigv: [...obj[queryId]['sigv'], sigv],
       sigrs: [...obj[queryId]['sigrs'], sigrs],
       response: [...obj[queryId]['response'], response]
-    }}}, {});
+    }}}, 
+  {});
 
-  try {
-    await callContractRespond(queriesList);
-    flushResponded(Object.keys(queriesList)).then(()=> console.log('flushed')).catch(err => console.log(err))
-  } catch(err) {
-    console.log(err);
-    restoreNotResponded(Object.keys(queriesList)).then(()=> console.log('flushed')).catch(err => console.log(err))
+  if (responses.length) {
+    try {
+      await callContractRespond(queriesList);
+    } catch(err) {
+      console.log(err);
+      await restoreNotResponded(Object.keys(queriesList))
+      console.log('flushed:', queriesList.length);
+    }
   }
+
+  console.log('deleted', await flushResponded(Object.keys(queriesList)));
 }

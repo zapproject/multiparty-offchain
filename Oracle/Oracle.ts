@@ -49,7 +49,7 @@ export  class ZapOracle {
     }
 
     async initialize() {
-       this.contract = {
+       /*this.contract = {
             MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
             MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6"),
             registry: new this.web3.eth.Contract(Registry.abi, Config.contractAddress),
@@ -69,7 +69,7 @@ export  class ZapOracle {
         }
         this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
 
-        this.contract.MPO.events.allEvents({}, { fromBlock: 0, toBlock: 'latest' }, (err, res) => {console.log("res:", res)});
+        this.contract.MPO.events.allEvents({}, { fromBlock: 0, toBlock: 'latest' }, (err, res) => {console.log("res:", res)});*/
 
         this.mockQueries();
 
@@ -78,7 +78,7 @@ export  class ZapOracle {
         handleRemoteResponses((err) => console.log(err), this.responders, addResponse);
 
         console.log("Everty minute check for nessesary number of responses to each query and for timed out queries and then send responses to subscribers");
-        cron.schedule('* * * * *', () => handleResponsesInDb(this.respondersQuantity, this.responders, this.sendToBlockchain));
+        cron.schedule('* * * * *', () => handleResponsesInDb(this.respondersQuantity = 5, this.responders, this.sendToBlockchain));
     }
     
 
@@ -102,9 +102,8 @@ export  class ZapOracle {
             endpointParams: results.endpointParams,//.map(hexToUtf8),
             onchainSub: results.onchainSubscriber
         }
-        console.log(results)
-        console.log(`Received query to ${event.endpoint} from ${event.onchainSub ? 'contract' : 'offchain subscriber'} at address ${event.subscriber}`);
-        console.log(`Query ID ${event.queryId.substring(0, 8)}...: "${event.query}". Parameters: ${event.endpointParams}`);
+        //console.log(`Received query to ${event.endpoint} from ${event.onchainSub ? 'contract' : 'offchain subscriber'} at address ${event.subscriber}`);
+        //console.log(`Query ID ${event.queryId.substring(0, 8)}...: "${event.query}". Parameters: ${event.endpointParams}`);
         await addQuery(event);   
     }
 
