@@ -13,6 +13,7 @@ export enum QueryStatus {
 };
 
 export function addQuery(event: QueryEvent): any {
+  console.log(event);
  return knex('queries').insert({
     queryId: String(event.queryId),
     query: event.query,
