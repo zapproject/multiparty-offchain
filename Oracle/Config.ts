@@ -1,9 +1,9 @@
 const config = {
 	"title": "Template-Oracle",
-	"SERVER_URL": "localhost:3000",
-	"NODE_URL": "ws://127.0.0.1:7545",
-	"mnemonic" : "grass female find slogan motion old merry reject flame direct cycle stomach",
-	"contractAddress": "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6",
+	"SERVER_URL": "http://localhost:3000/response",
+	"NODE_URL": "wss://kovan.infura.io/ws/v3/09323fc48925428bbae7cefd272dd0c1",
+	"mnemonic" : "nothing clinic express blood success torch artefact fresh where fine define undo",
+	"contractAddress": "0x0d3c8fe0c248ec9abb66603f6fae48d176193e2c",
 	"contractABI": require("../contracts/MultiPartyOracle.json"),
 	"STATUS_URL":"",
 	"timeout": 180000,

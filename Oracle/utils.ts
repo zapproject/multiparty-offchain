@@ -40,6 +40,6 @@ async function generateAddressesFromSeed(seed: any, count?: number) {
 
 export async function getSignature(answer: any){
   const accounts = await generateAddressesFromSeed(Config.mnemonic);
-  const msgHash = eutil.hashPersonalMessage(new Buffer(answer));
-  return  JSON.stringify(eutil.ecsign(msgHash, Buffer.from(accounts[0].privateKey, 'hex')));
+  const msgHash = eutil.hashPersonalMessage(new Buffer(answer.toString()));
+  return  eutil.ecsign(msgHash, Buffer.from(accounts[0].privateKey, 'hex'));
 }
