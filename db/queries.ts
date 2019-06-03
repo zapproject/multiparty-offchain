@@ -21,41 +21,47 @@ export function addQuery(event: QueryEvent): any {
   }).returning('id');
 }
 
-export async function addResponse(responders: Array<string>, event: ResponseEvent): Promise<any> {
+export async function addResponseToDb(responders: Array<string>, event: ResponseEvent): Promise<any> {
   const { response } = event;
-  const signature = JSON.parse(event.signature);
+  //console.log('EVENT!!!!', event.queryId)
+  const signature = event.signature;
   const msgHash = eutil.hashPersonalMessage(Buffer.from(response.toString()));
   const hash = '0x' + msgHash.toString('hex');
   //const sig = '0x'+signature.toString('hex');
-  const sigv = parseInt(signature.v.toString(10));
+  const sigv = parseInt(signature.v.toString(10));//!
   const sigrs = [];
-  sigrs.push('0x' + signature.r.toString('hex'));
-  sigrs.push('0x' + signature.s.toString('hex'));
-  const pubKey = eutil.ecrecover(msgHash,signature.v, signature.r, signature.s);
-  if (responders.indexOf(pubKey) === -1) {
-    console.log(`Public key not listed in contract: ${pubKey}`);
+  sigrs.push('0x' + Buffer.from(signature.r.data).toString('hex'));
+  sigrs.push('0x' + Buffer.from(signature.s.data).toString('hex'));
+  const pubkey = eutil.ecrecover(msgHash, signature.v, signature.r.data, signature.s.data);
+  const addrBuf = eutil.pubToAddress(pubkey);
+  const addr = eutil.bufferToHex(addrBuf);
+  if (responders.indexOf(addr.toUpperCase()) == -1) {
+    console.log(`Public key not listed in contract: ${addr}`);
     return;
   } 
-  const _sigrs = JSON.stringify(sigrs);
   return await knex('responses').insert({
     queryId: String(event.queryId),
     response,
     hash,
     sigv,
-    _sigrs,
-    pubKey,
+    sigrs: JSON.stringify(sigrs),
+    addr,
     status: 'Active'
   }).returning('id');
 }
 
 export function flushResponded(keys) {
-  knex.select('*')
+  console.log('respondedKeys:', keys)
+ /* knex.select('*')
       .from('queries').then(res => console.log('queries:', res))
+      knex.select('*')
+      .from('responses').then(res => console.log('queries:', res))*/
   return knex.transaction(function(trx) {
     let idsList;
     return trx.select('queryId')
     .from('queries')
     .where('received', '<', new Date(Date.now() - Config.timeout))
+    .orWhere('queryId', 'undefined')
     .then(async ids => {
       console.log(ids, keys);
       idsList = ids.map(item => item.queryId).concat(keys);
@@ -103,29 +109,27 @@ export function getResponses(count) {
     });  
 }
 
-export async function handleResponsesInDb(quantity, responders, callContractRespond) {
+export async function handleResponsesInDb(quantity: number, reponders: any, callContractRespond) {
   const responses = await getResponses(quantity);
-
-  const queriesList = responses.reduce((obj, { hash, sig, sigv, _sigrs, pubKey, response, queryId}) => {
+  const queriesList = responses.reduce((obj, { hash, sig, sigv, sigrs: _sigrs, response, queryId}) => {
     const sigrs = JSON.parse(_sigrs);
-    const sender = eutil.publicToAddress(pubKey);
-    const addr = eutil.bufferToHex(sender);
     if(!obj[queryId]) obj[queryId] = {hash: [], sigv: [], sigrs: [], response: []};
     return {...obj, [queryId]: {
-      hash: [...obj[queryId]['hash'], hash],
-      sigv: [...obj[queryId]['sigv'], sigv],
-      sigrs: [...obj[queryId]['sigrs'], sigrs],
-      response: [...obj[queryId]['response'], response]
+      hash: [new String(hash).valueOf()],
+      sigv: [new String(sigv).valueOf()],
+      sigrs: [new String(sigrs[0]).valueOf(), new String(sigrs[1]).valueOf()],
+      response: [new String(response).valueOf()]
     }}}, 
   {});
 
   if (responses.length) {
     try {
       await callContractRespond(queriesList);
-    } catch(err) {
-      console.log(err);
-      await restoreNotResponded(Object.keys(queriesList))
-      console.log('flushed:', queriesList.length);
+    } catch({error, responded}) {
+      console.log(error);
+      const toRestore = queriesList.filter(item => responded.indexOf(item) === -1);
+      await restoreNotResponded(Object.keys(toRestore));
+      console.log('To restore after error:', toRestore);
     }
   }
 

@@ -5,6 +5,6 @@ const config = {
 	"contractAddress": "0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6",
 	"contractABI": require("../contracts/MultiPartyOracle.json"),
 	"STATUS_URL":"",
-	"timeout": 180000,
+	"timeout": 180000000,
 	"responders": ""
 }

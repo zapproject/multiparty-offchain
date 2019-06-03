@@ -7,10 +7,21 @@ export interface QueryEvent {
   onchainSub: boolean
 }
 
+interface Signature {
+  r: {
+    type: string;
+    data: Array<any>;
+  },
+  s: {
+    type: string;
+    data: Array<any>;
+  },
+  v: number;
+}
 export interface ResponseEvent {
-  queryId: string,
-  response: string,
-  signature: string
+  queryId: string;
+  response: string;
+  signature: any;
 }
 
 export interface QuerySchema {

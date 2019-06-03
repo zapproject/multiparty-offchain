@@ -7,7 +7,7 @@
     "build": "tsc",
     "test": "jest",
     "start": "npm run build && node Oracle/index.js",
-    "migrate": "npm run build && knex migrate:latest"
+    "migrate": "npm run build &&  knex migrate:latest"
   },
   "keywords": [
     "Zap",
@@ -26,18 +26,19 @@
     "@zapjs/zaptoken": "^2.0.12",
     "axios": "^0.18.0",
     "bluebird": "^3.5.2",
+    "ethereumjs-util": "6.1.0",
+    "ipfs-mini": "1.1.5",
     "knex": "^0.15.2",
+    "knex-cleaner": "^1.1.4",
     "mysql": "^2.16.0",
     "node-cron": "^2.0.3",
     "path": "^0.12.7",
     "request": "^2.88.0",
+    "request-promise": "4.2.4",
+    "socket.io-client": "2.2.0",
     "truffle-hdwallet-provider": "git+https://github.com/zapproject/truffle-hdwallet-provider.git",
     "web3": "1.0.0-beta.36",
-    "websocket": "^1.0.28",
-    "ipfs-mini": "1.1.5",
-    "socket.io-client": "2.2.0",
-    "request-promise": "4.2.4",
-    "ethereumjs-util": "6.1.0"
+    "websocket": "^1.0.28"
   },
   "devDependencies": {
     "@types/jest": "^23.3.7",

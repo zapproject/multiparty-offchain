@@ -10,9 +10,9 @@ const config = {
 	"EndpointSchema": {
 		"name": "qwerty",
 		"responders": [
-			"0x0532a881D2CE49053089685dAB6f03D7b815Aa27",
-			"0xC1072D9225E8ba52d3f378d726ED964e0072d69D",
-			"0x5a8Cb34E1E802CA357C506b5b07C398f186C09FE"
+			"",
+			"",
+			""
 		]
 	}
 

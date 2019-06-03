@@ -1,4 +1,5 @@
 import * as Knex from 'knex';
+
 export const up = function(knex: Knex, Promise) {
   return knex.schema.createTable('queries', table => {
     table.increments('id').primary();
@@ -11,10 +12,10 @@ export const up = function(knex: Knex, Promise) {
     table.text('hash').notNullable();
     table.string('sigv', 255).notNullable();
     table.string('sigrs', 255).notNullable();
-    table.string('pubkey', 255).notNullable();
+    table.string('addr', 255).notNullable();
     table.string('status', 255);
     table.text('response').notNullable();
-    table.unique(['queryId', 'hash'], 'unique_response');
+    table.unique(['queryId', 'addr'], 'unique_response');
   });
 };
 
