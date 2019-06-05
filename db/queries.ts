@@ -1,7 +1,5 @@
 import knex from './knex';
 import { QueryEvent, ResponseEvent } from '../Oracle/types';
-import mysql from 'mysql';
-import cron from 'node-cron';
 import Config from "../Oracle/Config.js";
 const eutil = require('ethereumjs-util');
 
@@ -23,7 +21,6 @@ export function addQuery(event: QueryEvent): any {
 
 export async function addResponseToDb(responders: Array<string>, event: ResponseEvent): Promise<any> {
   const { response } = event;
-  //console.log('EVENT!!!!', event.queryId)
   const signature = event.signature;
   const msgHash = eutil.hashPersonalMessage(Buffer.from(response.toString()));
   const hash = '0x' + msgHash.toString('hex');
@@ -51,11 +48,6 @@ export async function addResponseToDb(responders: Array<string>, event: Response
 }
 
 export function flushResponded(keys) {
-  console.log('respondedKeys:', keys)
- /* knex.select('*')
-      .from('queries').then(res => console.log('queries:', res))
-      knex.select('*')
-      .from('responses').then(res => console.log('queries:', res))*/
   return knex.transaction(function(trx) {
     let idsList;
     return trx.select('queryId')
@@ -129,7 +121,8 @@ export async function handleResponsesInDb(quantity: number, reponders: any, call
       console.log(error);
       const toRestore = queriesList.filter(item => responded.indexOf(item) === -1);
       await restoreNotResponded(Object.keys(toRestore));
-      console.log('To restore after error:', toRestore);
+      console.log('To restore:', queriesList);
+      return;
     }
   }
 
