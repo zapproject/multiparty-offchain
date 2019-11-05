@@ -1,6 +1,7 @@
 import knex from './knex';
 import { QueryEvent, ResponseEvent } from '../Oracle/types';
 import Config from "../Oracle/Config.js";
+import {getInfo} from './infoQueries';
 const eutil = require('ethereumjs-util');
 
 

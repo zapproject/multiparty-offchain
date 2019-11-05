@@ -1,30 +1,47 @@
 import Config from "./Config.js";
 const Web3 = require('web3');
+import { ZapProvider } from "@zapjs/provider";
+import {ZapToken} from "@zapjs/zaptoken"
 const HDWalletProviderMem = require("truffle-hdwallet-provider");
+const {utf8ToHex, toBN, hexToUtf8, bytesToHex, hexToBytes, toHex, fromWei} = require("web3-utils");
 const assert = require("assert")
-import { addQuery, addResponseToDb, handleResponsesInDb } from "../db/queries";
+const IPFS = require("ipfs-mini")
+const ipfs = new IPFS({host:'ipfs.infura.io',port:5001,protocol:'https'})
+const IPFS_GATEWAY = "https://gateway.ipfs.io/ipfs/"
+import { addQuery, handleResponsesInDb } from "../db/queries";
 import { handleRemoteResponses } from '../endpoints';
 const cron = require('node-cron');
-const DEFAULT_GAS = 100000;
+import { ResponseEvent } from "./types";
+import { config } from "bluebird";
+import { exists } from "fs";
+const DEFAULT_GAS = 20000000000;
 const MPO = require('../contracts/MultiPartyOracle.json');
 const MPOStorage = require('../contracts/MPOStorage.json');
-const GAS_PRICE = 20000000000;
+const Registry = require('../contracts/Registry.json');
+const Subscriber = require("../contracts/TestClient.json");
+const Coordinator = require("../contracts/ZapCoordinator.json");
+const Token = require("../contracts/ZapToken.json");
 
 export  class ZapOracle {
     private web3: any;
-    private aggregator: any;
+    private oracle: any;
+    private zapToken: any
+    private respondersQuantity: number = 1;
     private responders: Array<string>; 
-    transactionFinished: boolean;
     contract: {
         MPO: any;
+        registry: any;
+        subscriber: any;
         MPOStorage: any;
+        Coordinator: any;
+        Token: any;
     }
 
     constructor(){
-        this.web3 = new Web3(new HDWalletProviderMem(Config.mnemonic, Config.NODE_URL));
-        this.aggregator = null;
+        this.web3 = new Web3(new HDWalletProviderMem(Config.mnemonic, Config.NODE_URL))
+        this.oracle = null
+        this.zapToken = null
         this.sendToBlockchain = this.sendToBlockchain.bind(this);
-        this.transactionFinished = true;
     }
     validateConfig() {
         assert(Config.mnemonic, "mnemonic is required to run Oracle")
@@ -35,97 +52,91 @@ export  class ZapOracle {
     async initialize() {
        this.contract = {
             MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
-            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, '0xb116b3f8dfa62b3d1c279abf66df6b4bc85a1108')
+            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, "0xCB9D31cac30f927ff94D52FC9beDc72866A49eD6"),
+            registry: new this.web3.eth.Contract(Registry.abi, Config.contractAddress),
+            subscriber: new this.web3.eth.Contract(Subscriber.abi, Config.contractAddress),
+            Coordinator: new this.web3.eth.Contract(Coordinator.abi, Config.contractAddress),
+            Token: new this.web3.eth.Contract(Token.abi, Config.contractAddress)
         }
+        //const accounts: string[] = await this.web3.eth.getAccounts();
+       // this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
+        //await this.contract.Token.allocate(Config.contractAddress, '1000', { from: Config.contractAddress });
+      //  //await this.contract.Token.allocate.allocate(allocAddress, tokensForSubscriber, { from: owner });
+        //console.log(1, await this.contract.Token.methods.approve('0xE8F948e52120Ef8ef6b30414C9336CEfc8DE825C', 1000)
+        //.send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'}));
+        //console.log(this.respondersQuantity)
 
-        this.responders = (await this.contract.MPOStorage.methods.getResponders().call()).map(res => res.toUpperCase());
+        this.contract.MPO.events.allEvents({}, { fromBlock: 0, toBlock: 'latest' }, (err, res) => {console.log("res:", res)});
 
-        if(!this.responders) {
-            this.responders = await this.contract.MPO.methods.setup(Config.EndpointSchema.responders).send({from: Config.public_key,  gas: DEFAULT_GAS, gasPrice: GAS_PRICE});
-            if (this.responders.length) {
-                console.log("list of responders is required to run Oracle");
-                process.exit(1);
-            }
-        }
+        this.mockQueries();
 
-        this.contract.MPO.events.Incoming(
-            {}, (err, res) => {
-                this.handleQuery(res);
-            }
-        );
-        
-        const accounts: string[] = await this.web3.eth.getAccounts();
-        this.aggregator = accounts[0];
 
         console.log("Start listening to responses and saving to db");
-        handleRemoteResponses((err) => console.log(err), this.responders, addResponseToDb);
+        handleRemoteResponses((err) => console.log(err), this.responders, () => {});
+       
 
         console.log("Everty minute check for nessesary number of responses to each query and for timed out queries and then send responses to subscribers");
-        cron.schedule('* * * * *', () => {
-            if (this.transactionFinished) {
-                handleResponsesInDb(this.responders.length, this.responders, this.sendToBlockchain);
-            }
-        });
-
+        cron.schedule('* * * * *', () => handleResponsesInDb(this.respondersQuantity, this.responders, this.sendToBlockchain));
     }
     
 
+    /**
+     * Loads a ZapProvider from a given Web3 instance
+     * @param web3 - WebSocket Web3 instance to load from
+     * @returns ZapProvider instantiated
+     */
+
+    delay = (ms:number) => new Promise(_ => setTimeout(_, ms));
+
     async handleQuery(queryEvent: any): Promise<void> {
-        console.log('event', queryEvent)
         const results: any = queryEvent.returnValues;
+        let response: string[] | number[]
+        // Parse the event into a usable JS object
         const event: any = {
             queryId: results.id,
             query: results.query,
-            endpoint: (results.endpoint),
+            endpoint: (results.endpoint),//hexToUtf8(results.endpoint),
             subscriber: results.subscriber,
-            endpointParams: results.endpointParams,
+            endpointParams: results.endpointParams,//.map(hexToUtf8),
             onchainSub: results.onchainSubscriber
         }
-
+        console.log(results)
+        console.log(`Received query to ${event.endpoint} from ${event.onchainSub ? 'contract' : 'offchain subscriber'} at address ${event.subscriber}`);
+        console.log(`Query ID ${event.queryId.substring(0, 8)}...: "${event.query}". Parameters: ${event.endpointParams}`);
         await addQuery(event);   
     }
 
-    async sendToBlockchain(responses: Object) {
-        this.transactionFinished = false;
-        const responded = [];
-        for(const queryId of Object.keys(responses)) {
-            const { hash, sigv, response, sigrs } = responses[queryId];
-            await this.contract.MPO.methods.callback(
-                new String(queryId).valueOf(),
-                response,
-                hash,
-                sigv,
-                sigrs
-                ).send({from: this.aggregator, gas: DEFAULT_GAS, gasPrice: GAS_PRICE})
-                .on('error', function(error){ return {error, responded} });
-            responded.push(queryId);
-        };
-        this.transactionFinished = true;
-        return true;
+    public async  mockQueries() {
+        for(let i = 0; i <= 3; i++) {
+            this.handleQuery(
+               {
+                    returnValues: {
+                        id: i ? i.toString() : '999',
+                        query: 'quo te agis?',
+                        endpoint: '0x6892ffc6',
+                        subscriber: 'subscriber',
+                        endpointParams: ['0x6892ffc6'],
+                        onchainSubscriber: 'onchainSubscriber'
+                    }
+                }
+            );
+        }
+        const params = [utf8ToHex("ETH"), utf8ToHex("BTC"), "0x"+"0".repeat(64-"3".length)+"3"];
     }
 
-    /*async sendToBlockchain(responses: Object) {
-        this.transactionFinished = false;
+    async sendToBlockchain(responses: Object) {
         console.log('respy', responses);
-        const currentNonce = await this.web3.eth.getTransactionCount(this.aggregator);
-        console.log('currentNonce: ', currentNonce);
-        const responsePromises = [];
-        for(const [index, queryId] of Object.keys(responses).entries()) {
+       const promises = [];
+        for(let queryId in responses) {
             const { hash, sigv, response, sigrs } = responses[queryId];
-            console.log(index, queryId)
-            responsePromises.push(this.contract.MPO.methods.callback(
-                new String(queryId).valueOf(),
+            promises.push(this.contract.MPO.methods.callback(
+                queryId,
                 response,
                 hash,
                 sigv,
-                sigrs
-                ).send({from: this.aggregator, gas: DEFAULT_GAS, gasPrice: 20000000000, nonce: '0x'+(currentNonce + index + 1).toString('hex')})
-                .on('error', function(error){ console.log(error); return new Error(error) }));
-        };
-        console.log(responsePromises)
-        const promRet = await Promise.all(responsePromises);
-        console.log('promRet', promRet);
-        this.transactionFinished = true;
-        return true;
-    }*/
+                ...sigrs,
+                ).send({from: Config.public_key, gas: DEFAULT_GAS}));
+        }
+        return Promise.all(promises);
+    }
   }
