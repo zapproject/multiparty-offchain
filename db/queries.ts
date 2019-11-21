@@ -16,6 +16,10 @@ export function addQuery(event: QueryEvent): any {
  return knex('queries').insert({
     queryId: String(event.queryId),
     query: event.query,
+    subscriber: event.subscriber,
+    endpoint: event.endpoint,
+    endpointParams: event.endpointParams.join(','),
+    onchainSubscriber: event.onchainSubscriber,
     received: new Date()
   }).returning('id');
 }
@@ -34,8 +38,7 @@ export async function addResponseToDb(responders: Array<string>, event: Response
   const addrBuf = eutil.pubToAddress(pubkey);
   const addr = eutil.bufferToHex(addrBuf);
   if (responders.indexOf(addr.toUpperCase()) == -1) {
-    console.log(`Public key not listed in contract: ${addr}`);
-    return;
+    throw `Public key not listed in contract: ${addr}`;
   } 
   return await knex('responses').insert({
     queryId: String(event.queryId),
@@ -117,12 +120,10 @@ export async function handleResponsesInDb(quantity: number, reponders: any, call
 
   if (responses.length) {
     try {
-      await callContractRespond(queriesList);
-    } catch({error, responded}) {
-      console.log(error);
-      const toRestore = queriesList.filter(item => responded.indexOf(item) === -1);
-      await restoreNotResponded(Object.keys(toRestore));
-      console.log('To restore:', queriesList);
+      const errorsSending = (await callContractRespond(queriesList)).filter(item => typeof item !== 'undefined');
+      await restoreNotResponded(errorsSending);
+    } catch(err) {
+      console.log(err);
       return;
     }
   }

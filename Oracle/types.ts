@@ -4,7 +4,7 @@ export interface QueryEvent {
   endpoint: string,
   subscriber: string,
   endpointParams: string[],
-  onchainSub: boolean
+  onchainSubscriber: boolean
 }
 
 interface Signature {

@@ -8,12 +8,13 @@ const assert = require("assert")
 const IPFS = require("ipfs-mini")
 const ipfs = new IPFS({host:'ipfs.infura.io',port:5001,protocol:'https'})
 const IPFS_GATEWAY = "https://gateway.ipfs.io/ipfs/"
-import { addQuery, handleResponsesInDb } from "../db/queries";
+import { addQuery, handleResponsesInDb, addResponseToDb } from "../db/queries";
 import { handleRemoteResponses } from '../endpoints';
 const cron = require('node-cron');
 import { ResponseEvent } from "./types";
 import { config } from "bluebird";
 import { exists } from "fs";
+import { throws } from "assert";
 const DEFAULT_GAS = 20000000000;
 const MPO = require('../contracts/MultiPartyOracle.json');
 const MPOStorage = require('../contracts/MPOStorage.json');
@@ -30,11 +31,7 @@ export  class ZapOracle {
     private responders: Array<string>; 
     contract: {
         MPO: any;
-        registry: any;
-        subscriber: any;
         MPOStorage: any;
-        Coordinator: any;
-        Token: any;
     }
 
     constructor(){
@@ -50,13 +47,9 @@ export  class ZapOracle {
     }
 
     async initialize() {
-       this.contract = {
+        this.contract = {
             MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
-            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, "0xCB9D31cac30f927ff94D52FC9beDc72866A49eD6"),
-            registry: new this.web3.eth.Contract(Registry.abi, Config.contractAddress),
-            subscriber: new this.web3.eth.Contract(Subscriber.abi, Config.contractAddress),
-            Coordinator: new this.web3.eth.Contract(Coordinator.abi, Config.contractAddress),
-            Token: new this.web3.eth.Contract(Token.abi, Config.contractAddress)
+            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, '0xb116b3f8dfa62b3d1c279abf66df6b4bc85a1108')
         }
         //const accounts: string[] = await this.web3.eth.getAccounts();
        // this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
@@ -65,14 +58,24 @@ export  class ZapOracle {
         //console.log(1, await this.contract.Token.methods.approve('0xE8F948e52120Ef8ef6b30414C9336CEfc8DE825C', 1000)
         //.send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'}));
         //console.log(this.respondersQuantity)
+        this.responders = (await this.contract.MPOStorage.methods.getResponders().call()).map(res => res.toUpperCase());
 
-        this.contract.MPO.events.allEvents({}, { fromBlock: 0, toBlock: 'latest' }, (err, res) => {console.log("res:", res)});
+        /*if(!this.responders) {
+            this.responders = await this.contract.MPO.methods.setup(Config.EndpointSchema.responders).send({from: Config.public_key,  gas: DEFAULT_GAS, gasPrice: GAS_PRICE});
+            if (this.responders.length) {
+                console.log("list of responders is required to run Oracle");
+                process.exit(1);
+            }
+        }*/
+        //console.log(this.contract.MPO.events)
+        this.contract.MPO.getPastEvents('Incoming', { fromBlock: 0, toBlock: 'latest' }, (err, events) => 
+        Promise.all(events.map(event => this.handleQuery(event).then(console.log).catch(console.log))));
 
-        this.mockQueries();
+        //this.mockQueries();
 
 
         console.log("Start listening to responses and saving to db");
-        handleRemoteResponses((err) => console.log(err), this.responders, () => {});
+        handleRemoteResponses((err) => console.log(err), this.responders, (event) => addResponseToDb(this.responders, event));
        
 
         console.log("Everty minute check for nessesary number of responses to each query and for timed out queries and then send responses to subscribers");
@@ -98,7 +101,7 @@ export  class ZapOracle {
             endpoint: (results.endpoint),//hexToUtf8(results.endpoint),
             subscriber: results.subscriber,
             endpointParams: results.endpointParams,//.map(hexToUtf8),
-            onchainSub: results.onchainSubscriber
+            onchainSubscriber: results.onchainSubscriber
         }
         console.log(results)
         console.log(`Received query to ${event.endpoint} from ${event.onchainSub ? 'contract' : 'offchain subscriber'} at address ${event.subscriber}`);
@@ -135,7 +138,9 @@ export  class ZapOracle {
                 hash,
                 sigv,
                 ...sigrs,
-                ).send({from: Config.public_key, gas: DEFAULT_GAS}));
+                ).send({from: Config.public_key, gas: DEFAULT_GAS})
+                .then(() => console.log('responded:', queryId))
+                .catch(err => queryId))
         }
         return Promise.all(promises);
     }

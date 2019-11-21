@@ -5,6 +5,10 @@ export const up = function(knex: Knex, Promise) {
     table.increments('id').primary();
     table.string('queryId', 255).notNullable();
     table.text('query').notNullable();
+    table.string('endpoint', 255).notNullable();
+    table.string('subscriber', 255).notNullable();
+    table.text('endpointParams').notNullable();
+    table.string('onchainSubscriber', 255).notNullable();
     table.timestamp('received').defaultTo(knex.fn.now());
   }).createTable('responses', table => {
     table.increments('id').primary();

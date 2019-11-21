@@ -6,18 +6,18 @@ export enum QueryStatus {
   Completed,
 };
 
-export function getInfo({limit, offset}) {
+export function getInfo({id, addr}) {
   return knex('queries')
     .select('*')
-    .limit(limit)
-    .offset(offset)
+    .where('id', '>', id)
+    .orderBy('id', 'desc')
     .then(async queries => {
        const idsList = queries.map(item => item.queryId);
-       console.log(queries)
         return Promise.all([
             knex('responses')
             .select('*')
-            .whereIn('queryId', idsList),
+            //.whereIn('queryId', idsList),
+            .where('addr', addr),
             Promise.resolve(queries)
         ])
     })
