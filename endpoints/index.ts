@@ -27,6 +27,9 @@ const server = http.createServer((req, res) => {
             getInfo(JSON.parse(body)).then(data => res.end(JSON.stringify(data)));
         });
     }
+    else if(req.method === 'GET' && req.url === "/responders") {
+       res.end(JSON.stringify(responders));
+    }
     else {
         res.end('not found')
     }

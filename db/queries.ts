@@ -12,7 +12,6 @@ export enum QueryStatus {
 };
 
 export function addQuery(event: QueryEvent): any {
-  console.log(event);
  return knex('queries').insert({
     queryId: String(event.queryId),
     query: event.query,
@@ -52,6 +51,9 @@ export async function addResponseToDb(responders: Array<string>, event: Response
 }
 
 export function flushResponded(keys) {
+  if(!keys.length) {
+    return 0;
+  }
   return knex.transaction(function(trx) {
     let idsList;
     return trx.select('queryId')
@@ -75,6 +77,9 @@ export function flushResponded(keys) {
 }
 
 export function restoreNotResponded(keys) {
+  if(!keys.length) {
+    return 0;
+  }
   return Promise.all([
     knex('responses')
     .whereIn('queryId', keys)
@@ -83,9 +88,9 @@ export function restoreNotResponded(keys) {
 }
 
 export function getResponses(count) {
-    return knex.transaction(function(trx) {
-      let idsList;
-      return trx.select('queryId')
+  return knex.transaction(function(trx) {
+    let idsList;
+    return trx.select('queryId')
       .from('responses')
       .whereNot('status', 'toDelete')
       .groupBy('queryId')
@@ -101,12 +106,13 @@ export function getResponses(count) {
         console.log('ids', idsList);
         return trx.select('*').from('responses')
         .whereIn('queryId', idsList);
-      })
-    });  
+    })
+  });  
 }
 
 export async function handleResponsesInDb(quantity: number, reponders: any, callContractRespond) {
   const responses = await getResponses(quantity);
+  console.log(responses)
   const queriesList = responses.reduce((obj, { hash, sig, sigv, sigrs: _sigrs, response, queryId}) => {
     const sigrs = JSON.parse(_sigrs);
     if(!obj[queryId]) obj[queryId] = {hash: [], sigv: [], sigrs: [], response: []};
@@ -118,15 +124,28 @@ export async function handleResponsesInDb(quantity: number, reponders: any, call
     }}}, 
   {});
 
+  let logSending = {success: [], err: []}; 
   if (responses.length) {
     try {
-      const errorsSending = (await callContractRespond(queriesList)).filter(item => typeof item !== 'undefined');
-      await restoreNotResponded(errorsSending);
+      logSending = (await callContractRespond(queriesList)).reduce(
+        (res, cur) => 
+        {
+          console.log(cur.err); 
+          if(cur.err !== null) {
+            res.err.push(cur.queryId);
+          } else {
+            res.success.push(cur.queryId);
+          }
+          return res;
+        }, {success: [], err: []});
     } catch(err) {
       console.log(err);
       return;
     }
   }
 
-  console.log('deleted', await flushResponded(Object.keys(queriesList)));
+  console.log(logSending)
+
+  console.log('restored in base', await restoreNotResponded(logSending.err));
+  console.log('deleted from base', await flushResponded(logSending.success));
 }

@@ -10,6 +10,7 @@ export const up = function(knex: Knex, Promise) {
     table.text('endpointParams').notNullable();
     table.string('onchainSubscriber', 255).notNullable();
     table.timestamp('received').defaultTo(knex.fn.now());
+    table.unique(['queryId'], 'unique_query');
   }).createTable('responses', table => {
     table.increments('id').primary();
     table.string('queryId', 255).notNullable();

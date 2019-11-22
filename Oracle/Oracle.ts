@@ -15,23 +15,28 @@ import { ResponseEvent } from "./types";
 import { config } from "bluebird";
 import { exists } from "fs";
 import { throws } from "assert";
-const DEFAULT_GAS = 20000000000;
+import { ZapDispatch } from "@zapjs/dispatch/lib/src";
+const DEFAULT_GAS = 10000000;
 const MPO = require('../contracts/MultiPartyOracle.json');
 const MPOStorage = require('../contracts/MPOStorage.json');
 const Registry = require('../contracts/Registry.json');
 const Subscriber = require("../contracts/TestClient.json");
 const Coordinator = require("../contracts/ZapCoordinator.json");
 const Token = require("../contracts/ZapToken.json");
+const Dispatch = require("../contracts/Dispatch.json");
+
 
 export  class ZapOracle {
     private web3: any;
     private oracle: any;
     private zapToken: any
-    private respondersQuantity: number = 1;
+    private respondersQuantity: number = 3;
     private responders: Array<string>; 
     contract: {
         MPO: any;
         MPOStorage: any;
+        Dispatch: any;
+        Subscriber: any;
     }
 
     constructor(){
@@ -49,8 +54,10 @@ export  class ZapOracle {
     async initialize() {
         this.contract = {
             MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
-            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, '0xb116b3f8dfa62b3d1c279abf66df6b4bc85a1108')
-        }
+            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, '0xb116b3f8dfa62b3d1c279abf66df6b4bc85a1108'),
+            Dispatch: new this.web3.eth.Contract(Dispatch.abi, '0x6b6AFD3FC0a7f47d48f9C5Fc13375a40E70BbBD3'),
+            Subscriber: new this.web3.eth.Contract(Subscriber.abi, '0x0fDA6B12Cc079493f8A519eDa1A7c2209F429fF6')
+        },
         //const accounts: string[] = await this.web3.eth.getAccounts();
        // this.respondersQuantity = await this.contract.MPOStorage.methods.getNumResponders().call();
         //await this.contract.Token.allocate(Config.contractAddress, '1000', { from: Config.contractAddress });
@@ -59,7 +66,7 @@ export  class ZapOracle {
         //.send({from: '0x6397c23f4e8914197699ba54Fc01333053C967cE'}));
         //console.log(this.respondersQuantity)
         this.responders = (await this.contract.MPOStorage.methods.getResponders().call()).map(res => res.toUpperCase());
-
+        this.respondersQuantity = this.responders.length;
         /*if(!this.responders) {
             this.responders = await this.contract.MPO.methods.setup(Config.EndpointSchema.responders).send({from: Config.public_key,  gas: DEFAULT_GAS, gasPrice: GAS_PRICE});
             if (this.responders.length) {
@@ -68,11 +75,9 @@ export  class ZapOracle {
             }
         }*/
         //console.log(this.contract.MPO.events)
+        this.contract.MPO.getPastEvents('OffchainResponseInt', {fromBlock: 0, toBlock: 'latest'}, (err, events) => console.log('hey', events))
         this.contract.MPO.getPastEvents('Incoming', { fromBlock: 0, toBlock: 'latest' }, (err, events) => 
-        Promise.all(events.map(event => this.handleQuery(event).then(console.log).catch(console.log))));
-
-        //this.mockQueries();
-
+        Promise.all(events.map(event => this.handleQuery(event).catch(console.log))));
 
         console.log("Start listening to responses and saving to db");
         handleRemoteResponses((err) => console.log(err), this.responders, (event) => addResponseToDb(this.responders, event));
@@ -92,6 +97,7 @@ export  class ZapOracle {
     delay = (ms:number) => new Promise(_ => setTimeout(_, ms));
 
     async handleQuery(queryEvent: any): Promise<void> {
+        return;
         const results: any = queryEvent.returnValues;
         let response: string[] | number[]
         // Parse the event into a usable JS object
@@ -109,24 +115,6 @@ export  class ZapOracle {
         await addQuery(event);   
     }
 
-    public async  mockQueries() {
-        for(let i = 0; i <= 3; i++) {
-            this.handleQuery(
-               {
-                    returnValues: {
-                        id: i ? i.toString() : '999',
-                        query: 'quo te agis?',
-                        endpoint: '0x6892ffc6',
-                        subscriber: 'subscriber',
-                        endpointParams: ['0x6892ffc6'],
-                        onchainSubscriber: 'onchainSubscriber'
-                    }
-                }
-            );
-        }
-        const params = [utf8ToHex("ETH"), utf8ToHex("BTC"), "0x"+"0".repeat(64-"3".length)+"3"];
-    }
-
     async sendToBlockchain(responses: Object) {
         console.log('respy', responses);
        const promises = [];
@@ -137,10 +125,10 @@ export  class ZapOracle {
                 response,
                 hash,
                 sigv,
-                ...sigrs,
+                [...sigrs],
                 ).send({from: Config.public_key, gas: DEFAULT_GAS})
-                .then(() => console.log('responded:', queryId))
-                .catch(err => queryId))
+                .then(() => ({err: null, queryId}))
+                .catch(err => ({err, queryId})))
         }
         return Promise.all(promises);
     }
