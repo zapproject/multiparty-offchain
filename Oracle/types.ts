@@ -1,10 +1,13 @@
 export interface QueryEvent {
   queryId: string,
+  mpoId: string;
   query: string,
   endpoint: string,
   subscriber: string,
+  provider: string;
   endpointParams: string[],
-  onchainSubscriber: boolean
+  onchainSubscriber: boolean,
+  threshold: number
 }
 
 interface Signature {
@@ -20,6 +23,7 @@ interface Signature {
 }
 export interface ResponseEvent {
   queryId: string;
+  mpoId: string;
   response: string;
   signature: any;
 }

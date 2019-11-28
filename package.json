@@ -38,7 +38,8 @@
     "socket.io-client": "2.2.0",
     "truffle-hdwallet-provider": "git+https://github.com/zapproject/truffle-hdwallet-provider.git",
     "web3": "1.2.4",
-    "websocket": "^1.0.28"
+    "websocket": "^1.0.28",
+    "socket.io": "2.3.0"
   },
   "devDependencies": {
     "@types/jest": "^23.3.7",

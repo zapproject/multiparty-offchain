@@ -10,6 +10,7 @@ export function getInfo({id, addr}) {
   return knex('queries')
     .select('*')
     .where('id', '>', id)
+    .andWhere('provider', addr)
     .orderBy('id', 'desc')
     .then(async queries => {
        const idsList = queries.map(item => item.queryId);
