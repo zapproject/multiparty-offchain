@@ -144,5 +144,5 @@ export async function handleResponsesInDb(callContractRespond, eventEmitter: any
   }
 
   console.log(logSending);
-  console.log('deleted from base', await flushResponded(logSending.success, eventEmitter));
+ // console.log('deleted from base', await flushResponded(logSending.success, eventEmitter));
 }

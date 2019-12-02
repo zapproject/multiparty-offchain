@@ -47,8 +47,8 @@ export  class ZapOracle {
 
     async initialize() {
         this.contract = {
-            MPO: new this.web3.eth.Contract(MPO.abi, Config.contractAddress),
-            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, '0xb116b3f8dfa62b3d1c279abf66df6b4bc85a1108'),
+            MPO: new this.web3.eth.Contract(MPO.abi, '0x904fd2bc3a1080580167106f7885bf2a910df6bd'),
+            MPOStorage: new this.web3.eth.Contract(MPOStorage.abi, '0xcc49299f9e0151ec17b66c0aec165a8ed4eb8db1'),
             Dispatch: new this.web3.eth.Contract(Dispatch.abi, '0x6b6AFD3FC0a7f47d48f9C5Fc13375a40E70BbBD3')
         },
 
@@ -58,15 +58,16 @@ export  class ZapOracle {
         const latest = await this.web3.eth.getBlockNumber()
         const incomingEvents = await this.contract.MPO.getPastEvents('Incoming', { fromBlock: latest - 50000, toBlock: 'latest' });
         await Promise.all(incomingEvents.map(event => this.handleQuery(event)));
-        const responseEvents = await this.contract.Dispatch.getPastEvents('OffchainResponseInt', {filter: {'provider': Config.contractAddress}, fromBlock: 0});
-        const responsedIds = responseEvents.map(({id}) => id);
+        const responseEvents = await this.contract.Dispatch.getPastEvents('OffchainResponseInt', {filter: {'provider': '0x904fd2bc3a1080580167106f7885bf2a910df6bd'}, fromBlock: 0});
+        const responsedIds = responseEvents.map(({returnValues: {id}}) => id);
+        console.log(responsedIds)
         await flushResponded(responsedIds, this.eventEmitter);
         this.contract.MPO.events.Incoming((err, event) => setTimeout(() => this.handleQuery(event).catch(console.log), 15000));
         this.contract.Dispatch.events.OffchainResponseInt((err, event) => {
             if(err) {
                 console.log(err);
             } else {
-                flushResponded([event.id], this.eventEmitter);
+                flushResponded([event.returnValues.id], this.eventEmitter);
             }
         })
 
@@ -86,7 +87,6 @@ export  class ZapOracle {
     delay = (ms:number) => new Promise(_ => setTimeout(_, ms));
 
     async handleQuery(queryEvent: any): Promise<void> {
-        console.log(queryEvent)
         const results: any = queryEvent.returnValues;
         //let response: string[] | number[]
         // Parse the event into a usable JS object
