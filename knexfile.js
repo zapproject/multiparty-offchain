@@ -5,7 +5,7 @@ module.exports = {
       host : 'database-2.cgps2bpd2nat.eu-west-1.rds.amazonaws.com',
       user : 'admin',
       password : 'modqBT11',
-      database : ''
+      database : 'oracles'
     },
     migrations: {
       directory: __dirname + '/db/migrations',
