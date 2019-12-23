@@ -2,10 +2,10 @@ module.exports = {
   development: {
     client: 'mysql',
     connection: {
-      host : '127.0.0.1',
-      user : 'root',
-      password : '1',
-      database : 'oracle'
+      host : 'database-2.cgps2bpd2nat.eu-west-1.rds.amazonaws.com',
+      user : 'admin',
+      password : 'modqBT11',
+      database : ''
     },
     migrations: {
       directory: __dirname + '/db/migrations',
